@@ -22,34 +22,31 @@ import static android.content.ContentValues.TAG;
  * Created by numabesachi on 2018/07/12.
  */
 public class PaintView extends View {
-    //Bitmap bmp;
+    final String TAG = "PaintView";
+
     private Paint paint;
     private Path path;
     String pathString = "";
-
     private List<Path> paths;
     private int pCount = 0;
-
     float touchX, touchY;
-
     int lineWidth = 40;
+    private static float MIN_ZOOM = 1f;
+    private static float MAX_ZOOM = 5f;
+    private float scaleFactor = 1.f;
+    private ScaleGestureDetector detector;
+
 
     public PaintView(Context context, AttributeSet attrs) {
         super(context, attrs);
-//        path = new Path();
+        detector = new ScaleGestureDetector(getContext(), new ScaleListener());
 
         paths = new ArrayList<>();
-
-        // mipmap にある ic_lancher と言うファイルを読み込んで、(Bitmap と言う形式で読み込む)
-        // bmp に画像のデータを代入する。
-        //bmp = BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher);
-
         initPaint();
     }
 
     private void initPaint() {
         paint = new Paint();
-        paint.setColor(Color.rgb(0, 0, 0));
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeJoin(Paint.Join.ROUND);
         paint.setStrokeCap(Paint.Cap.ROUND);
@@ -62,43 +59,43 @@ public class PaintView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
+        canvas.save();
+        canvas.scale(scaleFactor, scaleFactor);
+
         for (int i = 0; i < paths.size(); i++) {
             canvas.drawPath(paths.get(i), paint);
         }
 
-
-        //canvas.drawBitmap(bmp, touchX - 36, touchY - 36, paint);
+        canvas.restore();
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        Log.d(TAG, "touched");
+        detector.onTouchEvent(event);
+
         float x = event.getX();
         float y = event.getY();
 
         touchX = x;
         touchY = y;
 
-//        path = paths.get(pCount);
-//        path = new Path();
-
 
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
-//                path.moveTo(x, y);
                 path = new Path();
                 pathString += "M" + x + " " + y;
-                // x,y = 296, 317
-                // M296 317
-
                 paths.add(path);
                 path.moveTo(x, y);
                 invalidate();
                 break;
+
             case MotionEvent.ACTION_MOVE:
                 path.lineTo(x, y);
                 pathString += "L" + x + " " + y;
                 invalidate();
                 break;
+
             case MotionEvent.ACTION_UP:
                 path.lineTo(x, y);
                 pathString += "L" + x + " " + y;
@@ -109,31 +106,23 @@ public class PaintView extends View {
         }
 
         paths.set(pCount, path);
+          Log.d("PATH", pathString);
+          Log.d("PATH", path.toString());
+          Log.d("PATH", paths.size() + "");
 
-        Log.d("PATH", pathString);
-        Log.d("PATH", path.toString());
-        Log.d("PATH", paths.size() + "");
-
-        return true;
-    }
+          return true;
+        }
 
     public void clear() {
         pathString = "";
-//        path.reset();
         paths = new ArrayList<>();
         invalidate();
 
         pCount = 0;
     }
-//ペン色変える
-    // public void changeColor(int r, int g, int b){
-    //     this.paint.setColor(Color.rgb(r, g, b));
-    //  }
 
 
-    /**
-     * ピンチイン/アウトのListener
-     */
+    //ピンチインアウトのListener
     private ScaleGestureDetector.SimpleOnScaleGestureListener scaleGestureListener = new ScaleGestureDetector.SimpleOnScaleGestureListener() {
         // イベントの開始（２点タッチされたタイミングで発生）
         @Override
@@ -145,14 +134,21 @@ public class PaintView extends View {
         @Override
         public void onScaleEnd(ScaleGestureDetector detector) {
             super.onScaleEnd(detector);
-
         }
-        // ピンチイン/アウト
-        @Override
+
         public boolean onScale(ScaleGestureDetector detector) {
-            Log.d("MYLOG", "これはピンチインアウト");
             return super.onScale(detector);
         }
     };
-}
+
+    private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
+        @Override
+        public boolean onScale(ScaleGestureDetector detector) {
+            scaleFactor *= detector.getScaleFactor();
+            scaleFactor = Math.max(MIN_ZOOM, Math.min(scaleFactor, MAX_ZOOM));
+            invalidate();
+            return true;
+          }
+      }
+    }
 
